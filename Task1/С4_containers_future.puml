@@ -1,0 +1,54 @@
+@startuml
+!include <C4/C4>
+!include <C4/C4_Container>
+
+title "Целевая архитектура через год (Диаграмма контейнеров)"
+
+Person(businessUser, "Бизнес-пользователь", "Использует портал для самообслуживания и аналитики")
+Person(dataScientist, "Data Scientist / Аналитик", "Создаёт и тренирует ML-модели, исследует данные")
+
+System_Boundary("CoreDomains", "Основные домены (микросервисы по направлениям)") {
+    Container(FinanceSvc, "Finance Domain Services", "Golang/Java", "Финтех-логика: счета, кредиты, транзакции")
+    Container(MedicalSvc, "Medical Domain Services", "Python/Java", "Обработка медицинских данных (обезличенных) и взаимодействие с ИИ-сервисами")
+    Container(PharmaSvc, "Pharmaceutical Domain Services", "Java/.NET", "Управление цепочками поставок лекарств, складскими остатками")
+    Container(ManufacturingSvc, "Equipment Manufacturing Services", "Java/Golang", "Производственные процессы и учёт комплектующих для мед. оборудования")
+}
+
+System_Boundary("DataPlatform", "Новая платформа данных") {
+    Container(DataLake, "Data Lake Storage", "HDFS / Облачное хранилище", "Хранение сырых и полуготовых данных разных доменов")
+    Container(ETLOrchestration, "ETL/ELT Orchestrator", "Apache Airflow / NiFi / dbt", "Оркестрация и трансформация данных из доменов в Data Lake / Analytical DB")
+    Container(AnalyticalDB, "Аналитическая БД (MPP / Columnar)", "Snowflake / Greenplum / ClickHouse и др.", "Оптимизированное хранилище для BI- и сложных аналитических запросов")
+    Container(DataCatalog, "Data Catalog / Data Governance", "Hive Metastore / Collibra / DataHub и др.", "Управление метаданными, каталогизация и контроль доступа к данным")
+    Container(SelfServicePortal, "Self-Service Data Portal (BI/Analytics)", "Power BI / Tableau / Looker и т.п.", "Веб-интерфейс для формирования дашбордов и аналитических запросов")
+}
+
+System_Boundary("IntegrationLayer", "Слой интеграции и обмена событиями") {
+    Container(EventBus, "Event Streaming Platform", "Kafka / RabbitMQ / Pulsar", "Обмен событиями и сообщениями между доменами (pub/sub)")
+    Container(API_Gateway, "API Gateway", "Kong / Nginx / Istio", "Единая точка входа для REST/gRPC вызовов между сервисами и внешними системами")
+}
+
+System_Ext(LegacyDWH, "Legacy DWH (старый MSSQL)", "Microsoft SQL Server 2008", "Устаревшая DWH. Сохраняется для исторических данных и постепенного вывода из эксплуатации")
+
+Rel(businessUser, SelfServicePortal, "Запрашивает отчёты, строит дашборды", "HTTPS/REST")
+Rel(dataScientist, DataCatalog, "Ищет и описывает наборы данных, управляет ML-пайплайнами", "HTTPS")
+
+Rel(FinanceSvc, EventBus, "Публикует финансовые события (транзакции, кредиты), читает статусные сообщения", "Pub/Sub")
+Rel(MedicalSvc, EventBus, "Обезличенные данные о лечении/посещениях -> прогнозы, статусы", "Pub/Sub")
+Rel(PharmaSvc, EventBus, "События об остатках, поставках лекарств", "Pub/Sub")
+Rel(ManufacturingSvc, EventBus, "События о производственных операциях", "Pub/Sub")
+
+Rel(EventBus, ETLOrchestration, "Передача сырых данных и событий для дальнейшей загрузки в Data Lake/Analytical DB", "Batch/Stream")
+Rel(ETLOrchestration, DataLake, "Загрузка сырых и полуобработанных данных", "Batch/Stream")
+Rel(ETLOrchestration, AnalyticalDB, "Выгрузка агрегированных/трансформированных данных для аналитики", "Batch/Stream")
+
+Rel(SelfServicePortal, AnalyticalDB, "Запросы данных для формирования отчётов и визуализации", "SQL/ODBC/JDBC")
+Rel(SelfServicePortal, DataCatalog, "Получение информации о доступных наборах данных", "HTTPS/REST")
+
+Rel(LegacyDWH, ETLOrchestration, "Периодическая миграция исторических данных (до полного вывода)", "Batch")
+
+Rel(API_Gateway, FinanceSvc, "Внешние и внутренние REST/gRPC вызовы", "HTTP/gRPC")
+Rel(API_Gateway, MedicalSvc, "Внешние и внутренние REST/gRPC вызовы", "HTTP/gRPC")
+Rel(API_Gateway, PharmaSvc, "Внешние и внутренние REST/gRPC вызовы", "HTTP/gRPC")
+Rel(API_Gateway, ManufacturingSvc, "Внешние и внутренние REST/gRPC вызовы", "HTTP/gRPC")
+
+@enduml

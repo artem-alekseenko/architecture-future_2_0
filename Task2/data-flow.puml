@@ -1,0 +1,39 @@
+@startuml
+!include <C4/C4_Context>
+
+title Data Flow Diagram for Domain Architecture
+
+' Определение доменов
+Person(customer, "Клиент", "Пользователь системы")
+System_Boundary(domains, "Домены") {
+    System(fintech, "Финтех-домен", "Управление банковскими операциями, платежами, кредитными продуктами")
+    System(medical, "Медицинский домен", "Расписание приёмов, ведение медицинских данных")
+    System(pharma, "Фармацевтический домен", "Управление жизненным циклом лекарств, логистика")
+    System(manufacturing, "Производственный домен", "Производство медицинского оборудования")
+    System(hr, "HR/Персонал", "Управление сотрудниками")
+    System(crm, "CRM-домен", "Хранение и обработка клиентских данных")
+    System(analytics, "Домен аналитики", "Data Lake, Analytical DB, BI-инструменты")
+}
+
+' Потоки данных между доменами
+Rel(customer, crm, "Регистрация, управление данными", "REST API")
+Rel(crm, fintech, "Передача данных для платежей", "REST API")
+Rel(crm, medical, "Передача данных пациентов", "REST API")
+Rel(crm, pharma, "Передача данных для заказов лекарств", "REST API")
+Rel(crm, manufacturing, "Передача данных для заказов оборудования", "REST API")
+Rel(crm, hr, "Передача данных сотрудников", "REST API")
+
+Rel(fintech, analytics, "Передача финансовых данных", "ETL/ELT")
+Rel(medical, analytics, "Передача медицинских данных", "ETL/ELT")
+Rel(pharma, analytics, "Передача данных о лекарствах", "ETL/ELT")
+Rel(manufacturing, analytics, "Передача данных о производстве", "ETL/ELT")
+Rel(hr, analytics, "Передача данных о сотрудниках", "ETL/ELT")
+
+Rel(analytics, customer, "Отчёты и дашборды", "REST API")
+
+' Интеграция через события
+Rel(fintech, medical, "События о платежах", "Event-Driven")
+Rel(medical, pharma, "События о назначении лекарств", "Event-Driven")
+Rel(pharma, manufacturing, "События о заказах оборудования", "Event-Driven")
+
+@enduml
